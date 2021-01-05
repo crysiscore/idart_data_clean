@@ -8,7 +8,7 @@ library(writexl)
 # ******** Configure para o dir onde deixou os ficheiros necessarios para executar o programa ****
 
 #wd <- '~/Git/iDART/data-clean/'
-wd <- '/home/ccsadmin/R/projects/iDart/data_clean_altomae'
+wd <- '/home/ccsadmin/R/projects/iDart/data_clean_xipamanine'
 
 # Limpar o envinronment
 rm(list=setdiff(ls(), c("wd","tipo_nid")))
@@ -27,7 +27,7 @@ if (dir.exists(wd)){
 
 }
 
-us_name = 'cs_altomae'
+us_name = 'cs_xipamanine'
 patients$uuid_api_openmrs <- ""
 patients$obs <- ""
 patients$openmrs_status <- ""
@@ -40,6 +40,8 @@ patients$stringdist_pat2 <- ""
 patients$stringdist_pat3 <- ""
 patients$nid_openmrs <- ""
 patients$estado_permanencia <- ""
+patients$comparacao_uuid <- ""
+
 jdbc_properties <- readJdbcProperties(file = 'jdbc.properties')
   
 for (k in 1:nrow(patients)) {
@@ -126,26 +128,49 @@ for (k in 1:nrow(patients)) {
       pat_name_1 <- substr(df_openmrs_pat$results[[1]]$display, index_f_name_start+2, nchar(df_openmrs_pat$results[[1]]$display))
       pat_name_2 <- substr(df_openmrs_pat$results[[2]]$display, index_s_name_start+2, nchar(df_openmrs_pat$results[[2]]$display))
       
-      patients$stringdist_pat1[k] <- getStringDistance(string1 = patient[5],string2 = pat_name_1)
-      patients$stringdist_pat2[k] <- getStringDistance(string1 = patient[5], string2 = pat_name_2)
-      patients$openmrs_full_name[k] <- pat_name_1
+      patients$stringdist_pat1[k] <- getStringDistance(string1 = patient[5],string2 = tolower(pat_name_1))
+      patients$stringdist_pat2[k] <- getStringDistance(string1 = patient[5], string2 = tolower(pat_name_2))
+      patients$openmrs_full_name[k]       <- pat_name_1
       patients$openmrs_full_name_pat_2[k] <- pat_name_2
       
       vec <- c(patients$stringdist_pat1[k],patients$stringdist_pat2[k])
-      
       index <- which( vec == min(vec) )
+      duplicado_idart <- which(patients$patientid==patient[2])
       
-      if(index==2){
-      
-        patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[2]]$uuid
-        patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (string dis algorithm)")
+      if(length(duplicado_idart)==2){
+        patients$obs[k] <- 'Duplicado OpenMRS/iDART'
+      } else {
         
-      }else{
+        if(patients$uuidopenmrs[k] ==df_openmrs_pat$results[[1]]$uuid ){
+          
+          patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[1]]$uuid
+          if(index==1){
+            patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm)")
+            
+          } else if(index==2) {
+            
+            patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_1 )
+          }
+          
+        } else if(patients$uuidopenmrs[k] ==df_openmrs_pat$results[[2]]$uuid ){
+          patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[2]]$uuid
+          if(index==1){
+            
+            patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_2 )
+            
+            
+          } else if(index==2) {
+            
+            patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm)")
+          }
+        } else{
+          patients$obs[k] <- "uuid_idart  diferente com os 2 duplicados no openmrs"
+        }
         
-        patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[1]]$uuid
-        patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (Levenshtein algorithm)")
         
       }
+
+
         
     }
     else if(length(df_openmrs_pat$results)==3){
@@ -162,9 +187,9 @@ for (k in 1:nrow(patients)) {
       pat_name_2 <- substr(df_openmrs_pat$results[[2]]$display, index_s_name_start+2, nchar(df_openmrs_pat$results[[2]]$display))
       pat_name_3 <- substr(df_openmrs_pat$results[[3]]$display, index_t_name_start+2, nchar(df_openmrs_pat$results[[3]]$display))
       
-      patients$stringdist_pat1[k] <- getStringDistance(string1 = patient[5],string2 = pat_name_1)
-      patients$stringdist_pat2[k] <- getStringDistance(string1 = patient[5], string2 = pat_name_2)
-      patients$stringdist_pat3[k] <- getStringDistance(string1 = patient[5], string2 = pat_name_3)
+      patients$stringdist_pat1[k] <- getStringDistance(string1 = patient[5],string2 = tolower(pat_name_1))
+      patients$stringdist_pat2[k] <- getStringDistance(string1 = patient[5], string2 = tolower(pat_name_2))
+      patients$stringdist_pat3[k] <- getStringDistance(string1 = patient[5], string2 = tolower(pat_name_3))
       
       vec_str_dist <-c(patients$stringdist_pat1[k],patients$stringdist_pat2[k],patients$stringdist_pat3[k]) 
       
@@ -199,4 +224,5 @@ for (k in 1:nrow(patients)) {
   }
   
 save(patients, file = paste0('data/patients_',us_name,'.RData'))
+
 

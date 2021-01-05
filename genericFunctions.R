@@ -14,11 +14,11 @@
           pat.patient_id, 
           pid.identifier , 
           pe.uuid,
+          pe.birthdate,
            pn.given_name  given_name ,
            pn.middle_name middle_name,
            pn.family_name  family_name,
           concat(lower(pn.given_name),if(lower(pn.middle_name) is not null,concat(' ', lower(pn.middle_name) ) ,''),concat(' ',lower(pn.family_name)) ) as full_name_openmrs ,
-          pe.birthdate,
           estado.estado as estado_tarv ,
           max(estado.start_date) data_estado,
           date(visita.encounter_datetime) as data_ult_consulta,
@@ -74,7 +74,7 @@
     
   }
   
-  
+
   #' Busca todos pacientes do iDART
   #' 
   #' @param con.postgres  obejcto de conexao com BD iDART
@@ -301,214 +301,6 @@
   
   
   
-  #' Compoe um vector com dados do paciente que se vai actualizar/ Formatacao de NIDS
-  #' 
-  #' @param df tabela de duplicados para extrair os dados do Pat
-  #' @param index row do paciente em causa 
-  #' @return vector[id,uuid,patientid,openmrs_patient_id,full.name,index,given_name+midle_name,family_name] 
-  #' @examples composePatientToUpdate(67, nids_dups)
-  composePatientToUpdateNomeNid <- function(index,df){
-    
-    id = df$id[index]
-    uuid = df$uuid[index]
-    if(is.na(uuid)){
-      if("openmrs_uuid" %in% colnames(df))
-      {
-        uuid=df$openmrs_uuid[index];
-      }
-      
-      }
-    patientid = df$patientid[index]
-    openmrs_patient_id =df$patient_id[index]
-    full.name =  df$full_name[index]
-    middle_name =df$middle_name[index]
-    if(is.na(middle_name))
-    { given_name = df$given_name[index]}
-    else{
-      
-      given_name = gsub(pattern = 'NA', replacement = '',x = paste0(df$given_name[index],' ',df$middle_name[index]))
-    }
-   
-    family_name = df$family_name[index]
-    openmrs_patient_id =df$patient_id[index]
-    firstnames <- df$firstnames[index]
-    lastname <-  df$lastname[index]
-    
-  # enconding problems
-    Encoding(given_name) <- "latin1"
-    given_name <- iconv(given_name, "latin1", "UTF-8",sub='')
-    
-    Encoding(family_name) <- "latin1"
-    family_name <- iconv(family_name, "latin1", "UTF-8",sub='')
-    
-    Encoding(firstnames) <- "latin1"
-    firstnames <- iconv(firstnames, "latin1", "UTF-8",sub='')
-    
-    Encoding(lastname) <- "latin1"
-    lastname <- iconv(lastname, "latin1", "UTF-8",sub='')
-    patientid <- gsub(pattern = ' ', replacement = '', x = patientid)
-    patientid <- gsub(pattern = '\t', replacement = '', x = patientid)
-    patient <- c(id,uuid,patientid,openmrs_patient_id,full.name,index,given_name,family_name,firstnames,lastname)
-    patient
-  }
-  #' Compoe um vector com dados do paciente para se utilizar na tabela dos logs
-  #' 
-  #' @param df tabela onde se vai extrair os dados 
-  #' pode ser tabela do openmrs/idart/ ou uma composta
-  #' @param index row do paciente em causa 
-  #' @return vector[id,uuid,patientid,openmrs_patient_id,full.name,index] 
-  #' @examples composePatientToLog(67, nids_dups)
-  composePatientToLog <- function(df,index){
-    
-    id = df$id[index]
-    uuid = df$uuid[index]
-    patientid = df$patientid[index]
-    patientid <- gsub(pattern = ' ', replacement = '', x = patientid) #heheh
-    full_name <- str_replace_na(paste0(df$firstnames[index], ' ',df$lastname[index]),replacement=' ')
-    
-    Encoding(full_name) <- "latin1"
-    full_name <- iconv(full_name, "latin1", "UTF-8",sub='')
-    
-    patientid <- gsub(pattern = '\t', replacement = '', x = patientid)
-    patient <- c(id,uuid,patientid,full_name)
-    patient
-  }
-  
-  #' Actualiza os  uuid e openmrsuuid na tabela Patient
-  #' 
-  #' @param patient.id id do paciente na tabela  Patient
-  #' @param uuid.openmrs uuid do  OpenMRS
-  #' @return 0/1  (0) - error  (1) - sucess   
-  #' @examples updateUUID(67,  uuid)
-  updateUUID <- function (postgres.con, patient.id, uuid) {
-    dbExecute(
-      postgres.con,
-      paste0(
-        "update  public.patient set uuid='",
-        uuid,
-        "' , openmrsuuid='",
-        uuid ,
-        "'  where id = ",
-        patient.id,
-        " ;"
-      )
-    )
-    
-  }
-  
-  
-  #' Actualiza os  dados do uuidopenmrs    na tabela Patient
-  #' 
-  #' @param patient.id id do paciente na tabela  Patient
-  #' @param uuid.openmrs uuid do  OpenMRS
-  #' @return 0/1  (0) - error  (1) - sucess   
-  #' @examples updateUuuispenMRS(67,  uuid)
-  updateUuidIdart <- function (patient.id, uuid.openmrs) {
-    dbExecute(
-      con_postgres,
-      paste0(
-        "update  public.patient set uuidopenmrs='",
-        uuid.openmrs,
-        "'  where id = ",
-        patient.id,
-        " ;"
-      )
-    )
-    
-  }
-  
-  
-  #' Inicia o processo de actualizacao de um nid na base de dados iDART e OpenMRS 
-  #' 
-  #' @param new.nid.act NID do paciente por actualizar
-  #' @param patient_to_update  informacao do paciente[id,uuid,patientid,openmrs_patient_id,full.name,index]
-  #' @param df.idart.patients datafrane  com informacao de todos pacientes no iDART (info de identificacao e estado do paciente)
-  #' @param con.openmrs objecto de conexao com a bd mysql
-  #' @param con.idart objecto de  conexao com bd postgresql
-  #' @return Unknown
-  #' @examples beginUpdateProcess(new.nid.act,patient_to_update,df.idart.patients , con.openmrs,con.idart)
-  beginUpdateProcess <- function(new.nid.act,patient_to_update,df.idart.patients , df.openmrs.patients,con.openmrs,con.idart){
-    
-    if(new.nid.act != 0) {
-      
-      if( checkIfExistsNidIdart(new.nid.act,df.idart.patients) ){
-        
-        new.nid.act <- getNewNid(new.nid.act)
-        status_act_idart <- actualizaNidiDART(con.idart = con.idart,patient.to.update =patient_to_update,new.nid = new.nid.act )
-        
-        if(status_act_idart==1){
-          actualizaNidOpenMRS(con.openmrs = con.openmrs,patient.to.update = patient_to_update,new.nid = new.nid.act)
-          
-        }
-        
-      }
-      else if (checkIfExistsNidOpenMRS(new.nid.act,df.openmrs.patients) ){
-      
-        new.nid.act <- getNewNid(new.nid.act)
-        status_act_idart <- actualizaNidiDART(con.idart = con.idart,patient.to.update =patient_to_update,new.nid = new.nid.act )
-        
-        if(status_act_idart==1){
-          actualizaNidOpenMRS(con.openmrs = con.openmrs,patient.to.update = patient_to_update,new.nid = new.nid.act)
-          
-        }
-        
-      }
-      else {
-        
-        status_act_idart <- actualizaNidiDART(con.idart = con_postgres,patient.to.update =patient_to_update,new.nid = new.nid.act )
-        
-        if(status_act_idart==1){
-          actualizaNidOpenMRS(con.openmrs = con.openmrs,patient.to.update = patient_to_update,new.nid = new.nid.act)
-          
-        }
-  
-      }
-    } 
-    else{
-      
-      logAction(patient_to_update, 'Nao foi possivel obter novo NID para  o paciente. Verificar o Formato do NID!')
-    }
-    
-  }
-  
-  
-  
-  #' Busca o nome da US do openmrs
-  #' 
-  #' @param openmrs.con objecto de conexao com mysql    
-  #' @return us_default_locatoion
-  #' @examples
-  #' default_loc = getOpenmrsDefaultLocation(con_openmrs)
-  getOpenmrsDefaultLocation <- function (openmrs.con){
-    resut_set <- dbSendQuery(openmrs.con, "select property_value from global_property where property= 'default_location'")
-    data <- fetch(resut_set,n=1)
-    openmrs_default_location <- data$property_value[1]
-    RMySQL::dbClearResult(resut_set)
-    rm(data,resut_set)
-    #detach("package:RMySQL", unload = TRUE)
-    return (openmrs_default_location)
-    
-  }
-  
-  
-  
-  #' Busca o cod da US do openmrs
-  #' 
-  #' @param df.openmrs df com dados dos pacientes do openrms   
-  #' @return us.code codigo da US
-  #' @examples
-  #' us_code = getOpenmrsUsCode(openmrsAllpPatients)
-  getOpenmrsUsCode<- function ( df.openmrs){
-    
-    nids_correctos <- df.openmrs$patientidSemLetras[which(nchar(df.openmrs$patientidSemLetras)==21)]
-    us_codes <- substr(nids_correctos, 0, stri_locate_first(nids_correctos, regex = "/")[[1]] -1 )
-    us_code <- sort(table(us_codes),decreasing=TRUE)[1][1]
-    us_code <- names(us_code)
-    return(us_code)
-    
-  }
-  
-  
   
   #' Busca a maior frequencia da posicao da barra / nos nids mal formatados
   #' Ano/Seq  (934/11) ou Seq/Ano (11/934)
@@ -535,69 +327,6 @@
     
     
   }
-  
-  
-  #' Busca o tipo de sequencia de nids mal registados 
-  #' Ano/Seq  (934/11) ou Seq/Ano (11/934)
-  #' 
-  #' @param df df com dados dos pacientes do openrms   
-  #' @param nr_char tamanho do nid mal formatado  
-  #' @return pos posicao da barra do nid
-  #' #' @examples
-  #' seq = getTipoSeqNidUs(openmrsAllPatients)
-  getTipoSeqNidUs <- function (df) {
-    var_test_1 = 6
-    var_test_2 = 7   # Nids com 7  caracters
-    
-    vec_nids_6 <-
-      df$patientidSemLetras[which(nchar(df$patientidSemLetras) == var_test_1)] # Nids com 6 caracters
-    vec_nids_7 <-
-      df$patientidSemLetras[which(nchar(df$patientidSemLetras) == var_test_2)]
-    
-    pos_nid_6 <- getMaxPosBarraVec(vec_nids_6)
-    pos_nid_7 <- getMaxPosBarraVec(vec_nids_7)
-    
-    if (pos_nid_7 != 0) {
-      if (pos_nid_7 == 5) {
-        return('Seq/Ano')
-      } else if (pos_nid_7 == 3) {
-        return('Ano/Seq')
-      }
-    } else {
-      if (pos_nid_6 != 0) {
-        if (pos_nid_6 == 4) {
-          return('Seq/Ano')
-        } else if (pos_nid_6 == 3) {
-          return('Ano/Seq')
-        } else {
-          return('Ano/Seq_')
-        } # default nao conseguimos encontrar nids com 6 ou 7 caracteres
-        
-      } else {
-        return('Ano/Seq_')
-      }  # default nao conseguimos encontrar nids com 6 ou 7 caracteres
-      
-      
-    }
-    
-  }
-  
-  
-  
-  #' Calcula o peso da diferenca de dois strings atraves do algoritmo de leveingstein / stringdist no R
-  #' Funcao baseada no algoritmo de simetria de nomes
-  #' @param string1 do primeiro nome  
-  #' @param string2 o segudo nome
-  #' @return numeric distance
-  #' #' @examples
-  #' dist  = getStringDistance('agnaldo','agnaldo s')
-  getStringDistance <- function (string1,string2) {
-   
-    dist <- stringdist(string1,string2,method = 'jw')
-    return(dist)
-  }
-  
-  
   
   #' ReadJdbcProperties ->  carrega os paramentros de conexao no ficheiro jdbc.properties
   #' @param file  patg to file
@@ -668,4 +397,147 @@
         }
       }
       return(status)
+    }
+    
+    
+    #' Calcula o peso da diferenca de dois strings atraves do algoritmo de leveingstein / stringdist no R
+    #' Funcao baseada no algoritmo de simetria de nomes
+    #' @param string1 do primeiro nome  
+    #' @param string2 o segudo nome
+    #' @return numeric distance
+    #' #' @examples
+    #' dist  = getStringDistance('agnaldo','agnaldo s')
+    getStringDistance <- function (string1,string2) {
+      
+      dist <- stringdist(string1,string2,method = 'jw')
+      return(dist)
+    }
+    
+    
+    
+    checkNidSimilarity <- function(x,y)
+    {
+      # get last 2 char from y
+      str <- substr(y, nchar(y)-1, nchar(y))
+      if(grepl(pattern = str,x = x,ignore.case = TRUE)){
+        return(TRUE)
+      } else {
+        return(FALSE)
+      }
+    }
+    
+    
+    checkNameSimilarity <- function(x,y)
+    {
+      # get last 2 char from y
+      str <- tolower(substr(y, 1, stri_locate_first(y, regex = " ")-1))
+      if(grepl(pattern = str,x = x,ignore.case = TRUE)){
+        return(TRUE)
+      } else {
+        return(FALSE)
+      }
+    }
+    
+    
+    
+    
+    #' Remove Numeros dos nomes dos pacientes
+    #' 
+    #' @param name nome  do paciente
+    #' @return  name sem numeros  
+    #' @examples name <- removeNumbersFromName('Agnaldo 5-45j samuel)
+    removeNumbersFromName <- function(name) {
+      
+      
+      name <-   gsub("[0-9]", "", name)           # remover numeros
+      name <-   gsub("-", "", name)  
+      name <-   gsub("\\*", "", name)  
+      name <-   gsub("\\(", "", name)  
+      name <-   gsub("\\)", "", name)  
+      name
+    }
+    
+    
+    
+    
+    #' Extract  o numero de sequencia do NID
+    #' 
+    #' @param NID do paciente
+    #' @return  Numero de sequencia do NID
+    #' @examples getNumSeqNid(0111030701/2010/195) return '00195'
+    getNumSeqNid <- function(nid){
+      
+      new_nid <- removeLettersFromNid(nid)
+      # Quantas barras tem o nid
+      count <- str_count(new_nid, '/')  
+      
+      if (count == 1) {
+        if (getNidLength(new_nid) %in% c(4, 5, 6, 7, 8,9)) {
+          ## nids 77/13 , 980/11,  2207/10, 790/08 
+          
+          first_index <- stri_locate_first(new_nid, regex = "/")[[1]]
+          seq <- substr(new_nid, 0, first_index-1 )
+          #seq <- formatSequencia(seq)
+          return(seq)
+        } else {
+          return(0) ##  nao e possivel econtrar o numSeq
+        }
+      } else if (count == 2) {
+        
+        if(getNidLength(new_nid) %in% c(13,14,15, 16, 17,18,19,20,21)) {
+          
+          secon_index <- stri_locate_last(new_nid, regex = "/")[[1]]
+          seq <- substr(new_nid, secon_index + 1, nchar(new_nid))
+          #seq <- formatSequencia(seq)
+          return(seq)
+        }else {
+          return(0) ##  nao e possivel econtrar o numSeq
+        }
+        
+      } else {
+        return(0) ##  nao e possivel econtrar o numSeq
+        
+      }
+      
+    }
+    
+    
+    #' Remove letras dos nids dos pacientes
+    #' 
+    #' @param nid  NID  do paciente
+    #' @return  NID  sem Letras  
+    #' @examples nid <- removeLettersFromNid('12/345 SAAJ')
+    removeLettersFromNid <- function(nid) {
+      nid <-
+        gsub(" ", "", nid, fixed = TRUE)  # remover espacos em branco do nid
+      nid <-
+        gsub("[A-z]", "", nid)           # remover caracteres do nid
+      nid <-
+        gsub("[:punct:]", "", nid)        # remover Punctuation character: do nid: ! " # $ % & ' ( ) * + ,  ~
+      nid <-
+        gsub("-", "", nid)  
+      nid <- gsub(x = nid,pattern = "\\*",replacement = '')   # remover  *
+      nid <- gsub(x = nid,pattern = "'",replacement = '')   # remover  *
+      nid
+      
+      
+    }
+    
+    #' Retorna o tamanho  do NID 
+    #' 
+    #' @param nid do paciente
+    #' @return  integer  
+    #' @examples getNidLength('0111030701/2010/00195')
+    getNidLength <- function(nid) {
+      nchar(nid)
+    }
+    
+    
+    grepNrSeqNID <- function(x,y){
+      if(grepl( x, y,ignore.case = TRUE)){
+        return(TRUE)
+      } else {
+          return(FALSE)
+        }
+        
     }

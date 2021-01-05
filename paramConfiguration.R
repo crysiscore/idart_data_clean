@@ -19,12 +19,6 @@ postgres.host='192.168.1.163'                     # ******** modificar
 postgres.port=5432                             # ******** modificar
 
 
-## OpenMRS  - Configuracao de variaveis de conexao 
-openmrs.user ='esaude'                         # ******** modificar
-openmrs.password='esaude'                      # ******** modificar
-openmrs.db.name='altomae'                      # ******** modificar
-openmrs.host='192.168.1.10'                    # ******** modificar
-openmrs.port=3306                              # ******** modificar
 
 ####################################### Final da config  de Parametros  ########################################################################
 ################################################################################################################################################
@@ -62,13 +56,5 @@ source('genericFunctions.R')             ## Carregar funcoes
   patients <- por_investigar
   rm(por_investigar)
   
-  
-  
-  # Objecto de connexao com a bd openmrs
-  con_openmrs = dbConnect(MySQL(), user=openmrs.user, password=openmrs.password, dbname=openmrs.db.name, host=openmrs.host, port=openmrs.port)
-  
-  ## Pacientes
-  ## Buscar todos pacientes OpenMRS & iDART
-  openmrs_patients <- getAllPatientsOpenMRS(con_openmrs)
-  
+
   
