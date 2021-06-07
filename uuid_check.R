@@ -139,35 +139,78 @@ for (k in 1:nrow(patients)) {
       
       if(length(duplicado_idart)==2){
         patients$obs[k] <- 'Duplicado OpenMRS/iDART'
-      } else {
+      }
+      else {
         
-        if(patients$uuidopenmrs[k] ==df_openmrs_pat$results[[1]]$uuid ){
-          
-          patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[1]]$uuid
-          if(index==1){
-            patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm)")
+        uuidopenmrs <- patients$uuidopenmrs[k]
+        uuid <-  patients$uuid[k]
+        if( ! (is.na(uuidopenmrs) |  is.na(uuid) ) ){
+          if(is.na(uuidopenmrs)){
+            if(uuid ==df_openmrs_pat$results[[1]]$uuid ){
+              
+              patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[1]]$uuid
+              if(index==1){
+                patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm)")
+                
+              } else if(index==2) {
+                
+                patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_1 )
+              }
+              
+            } 
+            else if(uuid ==df_openmrs_pat$results[[2]]$uuid ){
+              patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[2]]$uuid
+              if(index==1){
+                
+                patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_2 )
+                
+                
+              } else if(index==2) {
+                
+                patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm)")
+              }
+            } 
+            else{
+              patients$obs[k] <- "uuid_idart  diferente com os 2 duplicados no openmrs"
+            }
             
-          } else if(index==2) {
             
-            patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_1 )
+          } else {
+            
+            if(uuidopenmrs ==df_openmrs_pat$results[[1]]$uuid ){
+              
+              patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[1]]$uuid
+              if(index==1){
+                patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm)")
+                
+              } else if(index==2) {
+                
+                patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_1 )
+              }
+              
+            } 
+            else if(uuidopenmrs ==df_openmrs_pat$results[[2]]$uuid ){
+              patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[2]]$uuid
+              if(index==1){
+                
+                patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_2 )
+                
+                
+              } else if(index==2) {
+                
+                patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm)")
+              }
+            } 
+            else{
+              patients$obs[k] <- "uuid_idart  diferente com os 2 duplicados no openmrs"
+            }
+            
           }
-          
-        } else if(patients$uuidopenmrs[k] ==df_openmrs_pat$results[[2]]$uuid ){
-          patients$uuid_api_openmrs[k]  <- df_openmrs_pat$results[[2]]$uuid
-          if(index==1){
-            
-            patients$obs[k] <- paste0(pat_name_1, " -  nome mais semelhante (stringdist algorithm) porem uuid e o mesmmo com o  ",pat_name_2 )
-            
-            
-          } else if(index==2) {
-            
-            patients$obs[k] <- paste0(pat_name_2, " -  nome mais semelhante (stringdist algorithm)")
-          }
-        } else{
-          patients$obs[k] <- "uuid_idart  diferente com os 2 duplicados no openmrs"
         }
-        
-        
+        else {
+          next
+        }
+
       }
 
 

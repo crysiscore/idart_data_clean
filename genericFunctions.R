@@ -23,7 +23,7 @@
           max(estado.start_date) data_estado,
           date(visita.encounter_datetime) as data_ult_consulta,
           date(visita.value_datetime) as data_prox_marcado
-          FROM  patient pat INNER JOIN  patient_identifier pid ON pat.patient_id =pid.patient_id and pat.voided=0 
+          FROM  patient pat INNER JOIN  patient_identifier pid ON pat.patient_id =pid.patient_id and  pid.identifier_type=2 and  pat.voided=0 
           INNER JOIN person pe ON pat.patient_id=pe.person_id and pe.voided=0 
           INNER JOIN person_name pn ON pe.person_id=pn.person_id and    pn.voided=0
           LEFT JOIN
@@ -484,7 +484,7 @@
         }
       } else if (count == 2) {
         
-        if(getNidLength(new_nid) %in% c(13,14,15, 16, 17,18,19,20,21)) {
+        if(getNidLength(new_nid) %in% c(13,14,15, 16, 17,18,19,20,21,22)) { ## 22 wrong nid
           
           secon_index <- stri_locate_last(new_nid, regex = "/")[[1]]
           seq <- substr(new_nid, secon_index + 1, nchar(new_nid))
